@@ -1,0 +1,123 @@
+@import '@xterm/xterm/css/xterm.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Colours come from CSS variables (--c-*) that ThemeProvider writes from src/theme/tokens.ts.
+ * Dark fallbacks here only cover the instant before React mounts (index.html sets data-theme).
+ */
+:root {
+  --c-canvas: 13 17 23;
+  --c-surface: 22 27 34;
+  --c-surface-2: 31 36 44;
+  --c-line: 48 54 61;
+  --c-line-muted: 33 38 45;
+  --c-fg: 230 237 243;
+  --c-fg-muted: 145 152 161;
+  --c-fg-subtle: 132 141 151;
+  --c-accent: 68 147 248;
+  --c-accent-emphasis: 31 111 235;
+  color-scheme: dark;
+}
+
+/*
+ * Tailwind's preflight is off (it fights antd), but its border reset is what makes `border-b`
+ * etc. draw a line at all. antd sets its own borders with class selectors, which win over this.
+ */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: rgb(var(--c-line));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  /* No background here: <html> carries it (set pre-paint in index.html, then by ThemeProvider) */
+  color: rgb(var(--c-fg));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-line));
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-fg-subtle));
+  background-clip: content-box;
+}
+
+/* Keyboard focus is always visible on custom controls */
+.focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+
+/* Mobile: keep content clear of the home indicator / bottom navigation */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mobile-content-pad {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 16px);
+}
+@media (min-width: 768px) {
+  .mobile-content-pad {
+    padding-bottom: 24px;
+  }
+}
+
+/* Mobile bottom sheets (antd Drawer placement="bottom") */
+.bottom-sheet .ant-drawer-content {
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+.bottom-sheet .ant-drawer-body {
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
+}
+
+/* Files: selected rows (antd's row hover would otherwise hide the selection) */
+.files-row-selected > td,
+.files-row-selected:hover > td {
+  background: rgb(var(--c-accent) / 0.16) !important;
+}
+.files-row-selected > td:first-child {
+  box-shadow: inset 3px 0 0 rgb(var(--c-accent));
+}
+/* Files: keep the path on one line and scroll it instead of wrapping */
+.files-breadcrumb ol {
+  flex-wrap: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

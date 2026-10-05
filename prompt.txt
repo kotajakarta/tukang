@@ -1,0 +1,46 @@
+# Role & Context
+Act as an Expert Full-Stack Python Developer and Linux System Administrator. Your task is to architect and build a comprehensive web-based Linux system administration platform. 
+
+The goal is to create a 100% feature-matched alternative to RHEL Cockpit, but written in Python for the backend, with a modern frontend, and a native, first-class Multi-Server Management feature built-in from day one.
+
+# Tech Stack Requirements
+- **Backend:** Python with FastAPI (for high-performance async APIs and WebSockets).
+- **System Interaction:** `psutil` (for metrics), `dbus-python` or `pystemd` (for systemd management), `asyncssh` (for multi-server communication), and `subprocess` for native Linux commands.
+- **Frontend:** React (Vite) with TypeScript, Tailwind CSS, and Ant Design (for enterprise-grade UI components).
+- **Terminal Integration:** `xterm.js` connected via WebSockets.
+- **Charts/Metrics:** `recharts` or `chart.js` for real-time monitoring graphs.
+
+# Core Architecture: Multi-Server Design
+The application must use a Centralized Controller model with an Agentless approach (similar to Ansible or Cockpit's multi-host). 
+1. The main Python application runs on a master node.
+2. It connects to other managed nodes via SSH (using key-based authentication).
+3. The UI must have a global server selector (dropdown/sidebar) that instantly switches the context of all dashboard metrics, services, and terminals to the selected server.
+
+# Key Features to Implement (Cockpit Parity + Enhancements)
+1. **System Dashboard (Real-time):**
+   - Live CPU, RAM, Disk I/O, and Network traffic graphs (streamed via WebSockets).
+   - System information (OS details, Kernel version, uptime, hardware specs).
+2. **Service Management (Systemd):**
+   - List, start, stop, restart, enable, and disable systemd services and timers.
+   - Read journalctl logs for specific services in real-time.
+3. **Container Management (Podman First):**
+   - Native integration with Podman.
+   - Specific UI support for managing rootless containers and Systemd Quadlets (creating, starting, stopping, and viewing logs of `.container`, `.network`, and `.volume` files).
+4. **Storage Management:**
+   - View disks, partitions, LVM, and mounts.
+   - Read/write SMART data.
+5. **Network Configuration:**
+   - Manage interfaces, IP addresses, firewall rules (firewalld/ufw), and view active connections.
+6. **Web Terminal:**
+   - Fully functional root/user shell in the browser via xterm.js.
+   - When switching servers in the UI, the terminal should seamlessly open an SSH session to the target node.
+7. **User Management:**
+   - Add/remove system users, manage SSH keys, change passwords, and manage sudo privileges.
+
+# Execution Plan (Step-by-Step)
+Please acknowledge this prompt and begin by outputting:
+1. **Project Structure:** A complete tree of the frontend and backend directories.
+2. **Architecture Document:** A brief explanation of how the FastAPI WebSocket will handle multiplexing data from multiple remote SSH servers to the React frontend.
+3. **Step 1 Code:** Provide the `requirements.txt`, `package.json`, and the foundational FastAPI `main.py` setup including the multi-server SSH connection manager.
+
+Do not write the entire application at once. Wait for my approval after providing the initial setup and project structure.

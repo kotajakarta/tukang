@@ -1,0 +1,67 @@
+# Cockpit-Py — Podman Quadlet
+#
+# Rootless install:  ~/.config/containers/systemd/cockpit-py.container
+# Rootful install:   /etc/containers/systemd/cockpit-py.container
+# Then: systemctl [--user] daemon-reload && systemctl [--user] start cockpit-py
+#
+# Required podman secrets (create once, see docs/DEPLOY.md):
+#   cockpit-py-admin-password  -> initial password for the "admin" login
+#   cockpit-py-ssh-key         -> private key the container uses to SSH into this host
+#   cockpit-py-data-key        -> Fernet key encrypting stored credentials (BACK IT UP)
+
+[Unit]
+Description=Cockpit-Py web console
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=cockpit-py
+Image=localhost/cockpit-py:latest
+
+# Same network as cloudflared, so the tunnel can reach http://cockpit-py:8000.
+# No PublishPort: the app is only reachable through the tunnel.
+Network=global_net
+
+Volume=cockpit-py-data:/data:Z
+
+Secret=cockpit-py-admin-password,type=env,target=ADMIN_PASSWORD
+Secret=cockpit-py-data-key,type=env,target=DATA_ENCRYPTION_KEY
+Secret=cockpit-py-ssh-key,type=mount,target=/run/secrets/host_ssh_key,uid=1000,mode=0400
+
+# The "local" node is the host itself, managed over SSH
+Environment=LOCAL_MODE=ssh
+Environment=LOCAL_SSH_HOST=host.containers.internal
+Environment=LOCAL_SSH_PORT=22
+Environment=LOCAL_SSH_USER=cockpit-mgr
+# Log in as the dedicated user and elevate per command with `sudo -n` (recorded in the host's sudo log)
+Environment=LOCAL_SSH_SUDO=true
+Environment=LOCAL_SSH_KEY_PATH=/run/secrets/host_ssh_key
+
+# Served over HTTPS by Cloudflare -> mark session cookie Secure
+Environment=COOKIE_SECURE=true
+# cloudflared overwrites CF-Connecting-IP, so it is safe to use it for rate limiting / audit — but only
+# from cloudflared itself: other containers on the network could send the header too
+Environment=TRUST_PROXY_HEADERS=true
+Environment=TRUSTED_PROXIES=cloudflared
+
+# Authentication policy
+Environment=MFA_REQUIRED=true
+Environment=SESSION_HOURS=12
+Environment=SESSION_IDLE_MINUTES=30
+Environment=PASSWORD_MIN_LENGTH=12
+
+# Hardening
+NoNewPrivileges=true
+DropCapability=ALL
+ReadOnly=true
+Tmpfs=/tmp
+
+HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+HealthInterval=30s
+
+[Service]
+Restart=always
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
