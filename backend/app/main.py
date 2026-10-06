@@ -29,13 +29,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
-logger = logging.getLogger("cockpit_backend")
+logger = logging.getLogger("tukang_backend")
 # asyncssh logs every executed command line at INFO (incl. the whole file-agent source); keep only problems
 logging.getLogger("asyncssh").setLevel(logging.WARNING)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing Cockpit-Py Master Controller...")
+    logger.info("Initializing tuKang Master Controller...")
     if settings.TRUST_PROXY_HEADERS and not settings.TRUSTED_PROXIES:
         logger.warning("TRUST_PROXY_HEADERS without TRUSTED_PROXIES: any peer that reaches this app directly can "
                        "choose its client IP (rate limits, audit). Set TRUSTED_PROXIES to the proxy's address/name.")
@@ -43,14 +43,14 @@ async def lifespan(app: FastAPI):
     await audit_service.prune()
     await ws_hub.start()
     yield
-    logger.info("Shutting down Cockpit-Py Master Controller...")
+    logger.info("Shutting down tuKang Master Controller...")
     await ws_hub.stop()
     await ssh_manager.close_all()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
-    description="Agentless Multi-Server Linux Administration Platform (Cockpit Alternative in Python)",
+    description="Agentless Multi-Server Linux Administration Platform",
     lifespan=lifespan,
     docs_url="/docs" if settings.ENABLE_API_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
@@ -70,7 +70,7 @@ app.add_middleware(SecurityMiddleware)
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "service": "cockpit-py-controller", "version": "1.0.0"}
+    return {"status": "ok", "service": "tukang-controller", "version": "1.0.0"}
 
 # API Routers (everything except /auth and /api/health requires a session)
 app.include_router(auth_router, prefix=settings.API_V1_STR)

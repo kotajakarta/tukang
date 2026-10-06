@@ -321,7 +321,7 @@ def test_quadlet_writer_never_writes_through_planted_symlink(tmp_path):
     victim.chmod(0o600)
     qdir = tmp_path / "systemd"
     qdir.mkdir()
-    (qdir / "web.container.cockpit-tmp").symlink_to(victim)
+    (qdir / "web.container.tukang-tmp").symlink_to(victim)
     res = _run_quadlet_writer(str(qdir / "web.container"), "[Container]\nImage=x\n")
     assert res.returncode == 0, res.stderr
     assert victim.read_text() == "ORIGINAL\n"

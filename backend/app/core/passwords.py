@@ -4,7 +4,7 @@ from app.core.config import settings
 # Small deny-list of the most common choices; length is the main control
 _COMMON = {
     "password", "passw0rd", "123456789012", "qwertyuiop", "administrator", "letmein", "welcome",
-    "changeme", "cockpit", "cockpit-py", "iloveyou", "admin",
+    "changeme", "tukang", "cockpit", "cockpit-py", "iloveyou", "admin",
 }
 
 def enforce_password_policy(password: str, username: str = ""):

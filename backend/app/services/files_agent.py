@@ -130,7 +130,7 @@ def op_read(req):
 
 def _private_tmp_name(directory):
     """Unguessable temp path; always open it with O_CREAT|O_EXCL|O_NOFOLLOW."""
-    return os.path.join(directory, ".cockpit-py-tmp-" + os.urandom(8).hex())
+    return os.path.join(directory, ".tukang-tmp-" + os.urandom(8).hex())
 
 def op_write(req):
     path = norm(req["path"])

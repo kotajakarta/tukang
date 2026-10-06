@@ -40,7 +40,7 @@ def test_ignore_rules_gitignore_extras():
 
 @pytest.fixture
 def tree():
-    with tempfile.TemporaryDirectory(prefix="cockpit-sync-") as d:
+    with tempfile.TemporaryDirectory(prefix="tukang-sync-") as d:
         src, dst = os.path.join(d, "src"), os.path.join(d, "dst")
         os.makedirs(f"{src}/app/node_modules/pkg")
         os.makedirs(f"{src}/docs/sub")
@@ -85,7 +85,7 @@ def test_pack_unpack_roundtrip_overwrites_and_keeps_extra_files(tree):
     assert stat.S_IMODE(os.stat(f"{dst}/run.sh").st_mode) == 0o755
     assert result["files"] == scan["files"] == 3  # main.py, run.sh, docs/sub/b.md
     assert scan["ignored"] == 4  # node_modules, debug.log, .env, docs/a.md
-    assert not [n for n in os.listdir(dst) if n.startswith(".cockpit-py-sync")]
+    assert not [n for n in os.listdir(dst) if n.startswith(".tukang-")]
 
 def test_explicitly_selected_ignored_path_is_skipped(tree):
     src, dst = tree

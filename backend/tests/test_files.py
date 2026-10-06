@@ -14,7 +14,7 @@ def client():
 
 @pytest.fixture
 def workdir():
-    with tempfile.TemporaryDirectory(prefix="cockpit-files-") as d:
+    with tempfile.TemporaryDirectory(prefix="tukang-files-") as d:
         yield d
 
 async def act(c, **body):
@@ -102,7 +102,7 @@ async def test_upload_and_download_stream(workdir):
         r = await c.get("/api/v1/files/local/download", params={"path": f"{workdir}/big.bin"})
         assert r.status_code == 200 and r.content == payload
         assert "attachment" in r.headers["content-disposition"]
-        assert not [f for f in os.listdir(workdir) if "cockpit-py" in f]  # no temp leftovers
+        assert not [f for f in os.listdir(workdir) if "tukang" in f]  # no temp leftovers
 
 @pytest.mark.asyncio
 async def test_upload_never_writes_through_planted_symlink(workdir):
@@ -112,7 +112,7 @@ async def test_upload_never_writes_through_planted_symlink(workdir):
     os.makedirs(f"{workdir}/protected")
     victim = f"{workdir}/protected/sudoers"
     open(victim, "w").write("ORIGINAL\n")
-    os.symlink(victim, f"{workdir}/shared/.report.pdf.cockpit-py-upload")
+    os.symlink(victim, f"{workdir}/shared/.report.pdf.tukang-upload")
     async with client() as c:
         r = await c.post("/api/v1/files/local/upload", params={"dir": f"{workdir}/shared", "name": "report.pdf"},
                          content=b"attacker ALL=(ALL) NOPASSWD: ALL\n")
@@ -143,7 +143,7 @@ def test_agent_write_never_reuses_planted_temp_file(workdir):
     os.chmod(f"{workdir}/app.conf", 0o600)
     open(f"{workdir}/mine", "w").write("mine\n")
     os.chmod(f"{workdir}/mine", 0o664)
-    os.link(f"{workdir}/mine", f"{workdir}/app.conf.cockpit-py-tmp")
+    os.link(f"{workdir}/mine", f"{workdir}/app.conf.tukang-tmp")
     files_agent.op_write({"path": f"{workdir}/app.conf", "content": "password=SECRET\n"})
     assert open(f"{workdir}/app.conf").read() == "password=SECRET\n"
     assert stat.S_IMODE(os.stat(f"{workdir}/app.conf").st_mode) == 0o600

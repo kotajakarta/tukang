@@ -187,13 +187,13 @@ async def test_audit_trail(test_account):
     async with client() as c:
         await _login(c, test_account, "nope")
         await _login(c, test_account)
-        await c.post("/api/v1/services/local/cockpit-test-nonexistent.service/action", json={"action": "start"},
+        await c.post("/api/v1/services/local/tukang-test-nonexistent.service/action", json={"action": "start"},
                      headers={"Origin": "http://test"})  # nonexistent unit: no side effects, we only check it is audited
         entries = (await c.get("/api/v1/audit", params={"username": test_account})).json()
     actions = [e["action"] for e in entries]
     assert "login.failure" in actions and "login.success" in actions
     svc = next(e for e in entries if e["action"] == "POST /api/v1/services/{server_id}/{unit}/action")
-    assert svc["server_id"] == "local" and "unit=cockpit-test-nonexistent.service" in svc["target"]
+    assert svc["server_id"] == "local" and "unit=tukang-test-nonexistent.service" in svc["target"]
 
 @pytest.mark.parametrize("raw", ["cloudflared, 10.88.0.0/16", '["cloudflared", "10.88.0.0/16"]'])
 def test_trusted_proxies_env_accepts_comma_list_or_json(monkeypatch, raw):

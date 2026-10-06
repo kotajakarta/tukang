@@ -15,10 +15,10 @@ logger = logging.getLogger("ssh_manager")
 # The helper only holds `printenv`; the password itself lives in this shell's environment. It answers once:
 # sudo re-asks after a wrong password, and three failures in a row can trip pam_faillock and lock the account.
 _ASKPASS_SUDO = (
-    'IFS= read -r COCKPIT_SUDO_PW; export COCKPIT_SUDO_PW; '
-    'A=$(mktemp "${HOME:-/tmp}/.cockpit-askpass.XXXXXX") || exit 1; '
+    'IFS= read -r TUKANG_SUDO_PW; export TUKANG_SUDO_PW; '
+    'A=$(mktemp "${HOME:-/tmp}/.tukang-askpass.XXXXXX") || exit 1; '
     "trap 'rm -f \"$A\" \"$A.used\"' EXIT; "
-    "printf '#!/bin/sh\\n[ -e \"$0.used\" ] && exit 1\\n: > \"$0.used\"\\nexec printenv COCKPIT_SUDO_PW\\n' "
+    "printf '#!/bin/sh\\n[ -e \"$0.used\" ] && exit 1\\n: > \"$0.used\"\\nexec printenv TUKANG_SUDO_PW\\n' "
     '> "$A" && chmod 700 "$A" || exit 1; '
     # LC_MESSAGES=C: callers recognise sudo's refusals by text, and they are translated otherwise
     'LC_MESSAGES=C SUDO_ASKPASS="$A" sudo -k -A -p "" -- sh -c '

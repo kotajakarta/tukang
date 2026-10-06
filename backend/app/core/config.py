@@ -4,8 +4,27 @@ from typing import Annotated, List, Literal, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+DB_NAME = "tukang.db"
+LEGACY_DB_NAME = "cockpit.db"  # file name used before the rebrand to tuKang
+
+
+def adopt_legacy_db(data_dir: Path) -> Path:
+    """Path of the SQLite DB; renames a pre-rebrand database into place once (never overwrites)."""
+    db_path = data_dir / DB_NAME
+    legacy = data_dir / LEGACY_DB_NAME
+    if not db_path.exists() and legacy.exists():
+        # Side files first: if we stop halfway, the next start still finds the legacy DB and finishes the
+        # job, whereas moving the DB first could strand uncheckpointed writes in a WAL nobody reads.
+        for suffix in ("-wal", "-shm", "-journal"):
+            side = data_dir / (LEGACY_DB_NAME + suffix)
+            if side.exists():
+                side.rename(data_dir / (DB_NAME + suffix))
+        legacy.rename(db_path)
+    return db_path
+
+
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Cockpit-Py Master Controller"
+    PROJECT_NAME: str = "tuKang Master Controller"
     API_V1_STR: str = "/api/v1"
     # Fernet key encrypting stored credentials. If unset, generated once into DATA_DIR/.data_key.
     DATA_ENCRYPTION_KEY: Optional[str] = None
@@ -21,7 +40,7 @@ class Settings(BaseSettings):
     # Never use "*" here: with cookie auth that would let any site read the API.
     CORS_ORIGINS: List[str] = []
     # Extra origins allowed to make state-changing requests / open WebSockets
-    # (e.g. "https://cockpit.example.com" if a proxy rewrites the Host header).
+    # (e.g. "https://tukang.example.com" if a proxy rewrites the Host header).
     TRUSTED_ORIGINS: List[str] = []
 
     # Authentication
@@ -29,7 +48,7 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: Optional[str] = None  # Initial admin password (only used when no user exists)
     SESSION_HOURS: int = 12  # absolute session lifetime
     SESSION_IDLE_MINUTES: int = 30  # signed out after this long without activity
-    SESSION_COOKIE_NAME: str = "cockpit_session"
+    SESSION_COOKIE_NAME: str = "tukang_session"
     COOKIE_SECURE: bool = False  # Set true when served over HTTPS (e.g. behind Cloudflare Tunnel)
     LOGIN_MAX_ATTEMPTS: int = 5  # failures per client IP within the lockout window
     LOGIN_ACCOUNT_MAX_ATTEMPTS: int = 10  # failures per account (any IP) within the window
@@ -83,7 +102,7 @@ class Settings(BaseSettings):
         super().__init__(**values)
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         if not self.DATABASE_URL:
-            db_path = self.DATA_DIR / "cockpit.db"
+            db_path = adopt_legacy_db(self.DATA_DIR)
             self.DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
 
 settings = Settings()

@@ -13,7 +13,7 @@ def client():
 @pytest_asyncio.fixture
 async def dirs():
     await init_db()
-    with tempfile.TemporaryDirectory(prefix="cockpit-remotes-") as d:
+    with tempfile.TemporaryDirectory(prefix="tukang-remotes-") as d:
         a, b = os.path.join(d, "project-a"), os.path.join(d, "deploy-b")
         os.makedirs(f"{a}/src/node_modules/lib")
         os.makedirs(b)
@@ -115,7 +115,7 @@ async def test_destination_failure_reported(dirs):
         r = await c.post(f"/api/v1/files/remotes/{remote['id']}/transfer", json={"direction": "upload", "paths": [a]})
         job = await wait_job(c, r.json())
     assert job["state"] == "error" and job["error"].startswith("Destination:") and "README.md" in job["error"]
-    assert not [n for n in os.listdir(b) if n.startswith(".cockpit-py-sync")]
+    assert not [n for n in os.listdir(b) if n.startswith(".tukang-")]
 
 @pytest.mark.asyncio
 async def test_deleting_server_deletes_its_remotes(dirs):

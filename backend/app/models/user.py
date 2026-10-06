@@ -12,7 +12,7 @@ def utc_now():
     return datetime.now(timezone.utc)
 
 class AppUserModel(Base):
-    """Cockpit-Py login account (separate from Linux system users)."""
+    """tuKang login account (separate from Linux system users)."""
     __tablename__ = "app_users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

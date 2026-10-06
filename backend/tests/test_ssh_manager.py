@@ -69,7 +69,7 @@ async def test_ssh_manager_reconnect_when_closed():
 @pytest.mark.asyncio
 async def test_use_sudo_wraps_commands_but_not_metrics_probe():
     manager = SSHConnectionManager()
-    info = ServerConnectionInfo(server_id="srv-sudo", host="10.0.0.2", username="cockpit-mgr", use_sudo=True)
+    info = ServerConnectionInfo(server_id="srv-sudo", host="10.0.0.2", username="tukang-mgr", use_sudo=True)
     mock_conn = MagicMock()
     mock_conn.is_closed.return_value = False
     mock_conn.get_server_host_key.return_value = None

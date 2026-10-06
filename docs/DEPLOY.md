@@ -1,6 +1,6 @@
-# Deploy Cockpit-Py (Podman Quadlet + Cloudflare Tunnel)
+# Deploy tuKang (Podman Quadlet + Cloudflare Tunnel)
 
-Container `cockpit-py` berjalan di network `global_net` (sama dengan `cloudflared`), tanpa port yang dipublish.
+Container `tukang` berjalan di network `global_net` (sama dengan `cloudflared`), tanpa port yang dipublish.
 Akses dari internet hanya lewat Cloudflare Tunnel. Node "local" (host server itu sendiri) dikelola lewat SSH
 dari dalam container ke `host.containers.internal`.
 
@@ -14,13 +14,13 @@ dan network `global_net`, dan user itu punya akses `sudo` (untuk linger & author
 
 ```bash
 # login langsung sebagai user tersebut (ssh user@server), bukan `sudo su - user`
-git clone <repo> ~/cockpit-py && cd ~/cockpit-py
+git clone <repo> ~/tukang && cd ~/tukang
 ./deploy/dep.sh
 ```
 
 Skrip ini: cek versi Podman, network, linger → build image → buat secret (password admin ditanya,
-kunci enkripsi dibuat + salinan backup di `~/cockpit-py-data-key.backup`, SSH key dibuat) → buat user
-`cockpit-mgr` + sudoers, daftarkan key dengan `restrict,pty` (+ label SELinux) → pasang Quadlet ke
+kunci enkripsi dibuat + salinan backup di `~/tukang-data-key.backup`, SSH key dibuat) → buat user
+`tukang-mgr` + sudoers, daftarkan key dengan `restrict,pty` (+ label SELinux) → pasang Quadlet ke
 `~/.config/containers/systemd/` → start → tes HTTP, SSH & sudo container→host → kunci key dengan `from=`.
 Pakai user host lain: `LOCAL_SSH_USER=namauser ./deploy/dep.sh` (`root` = tanpa sudo, tidak disarankan). Untuk update cukup
 `./deploy/dep.sh`: `git pull` (kalau ada upstream) → build ulang image → restart container dengan image baru →
@@ -29,48 +29,82 @@ sudoers, authorized_keys) hanya jalan saat instalasi pertama atau dengan `./depl
 
 Langkah 1–4 di bawah adalah versi manual dari skrip tersebut.
 
+## Migrasi dari Cockpit-Py
+
+Server yang masih menjalankan container lama `cockpit-py` dimigrasi otomatis oleh `./deploy/dep.sh` (via
+[`deploy/migrate-from-cockpit-py.sh`](../deploy/migrate-from-cockpit-py.sh)), **tanpa kehilangan data**:
+
+| Lama | Baru |
+|---|---|
+| container / service `cockpit-py` | `tukang` |
+| volume `cockpit-py-data` (berisi `cockpit.db`) | `tukang-data` (app mengganti nama ke `tukang.db` saat start) |
+| secret `cockpit-py-admin-password`, `-data-key`, `-ssh-key` | `tukang-admin-password`, `-data-key`, `-ssh-key` |
+| user host `cockpit-mgr`, `/etc/sudoers.d/cockpit-py` | `tukang-mgr`, `/etc/sudoers.d/tukang` |
+
+Kode terbaru harus sudah ada di server, lalu jalankan `dep.sh`:
+
+```bash
+# A) kode dikirim dengan ./sync.sh (rsync): pastikan sync sudah selesai, lalu di server:
+cd /path/ke/repo && ./deploy/dep.sh
+
+# B) server berupa git clone: riwayat git ditulis ulang saat rebranding, jadi `git pull` biasa gagal
+cd /path/ke/repo && git fetch origin && git reset --hard origin/main && ./deploy/dep.sh
+```
+
+`dep.sh` mendeteksi instalasi lama → migrasi → build → setup ulang sudoers/key.
+
+Setelah itu:
+1. **Wajib:** ubah tujuan public hostname Cloudflare Tunnel dari `http://cockpit-py:8000` ke
+   `http://tukang:8000`. Sebelum diubah, situs tidak bisa diakses.
+2. Semua user perlu login ulang sekali (nama cookie sesi berubah). Akun, MFA, server, dan audit log tetap.
+3. Data lama tidak dihapus. Setelah tuKang dipastikan berjalan, hapus sisa-sisanya dengan perintah yang
+   dicetak di akhir migrasi (`podman volume rm cockpit-py-data`, dst.).
+4. Server lain yang ditambahkan dengan username `cockpit-mgr` tidak ikut diubah dan tetap berjalan.
+
+Folder repo di server (`~/cockpit-py`) boleh tetap memakai nama lama; namanya tidak memengaruhi apa pun.
+
 ## 1. Build image
 
 ```bash
-cd /path/to/cockpit-py
-podman build -t localhost/cockpit-py:latest -f Containerfile .
+cd /path/to/tukang
+podman build -t localhost/tukang:latest -f Containerfile .
 ```
 
 ## 2. User khusus + SSH key untuk mengelola host
 
-Cockpit-Py login ke host sebagai user khusus `cockpit-mgr` lalu menaikkan hak dengan `sudo -n`, sehingga
+tuKang login ke host sebagai user khusus `tukang-mgr` lalu menaikkan hak dengan `sudo -n`, sehingga
 login root via SSH tidak diperlukan dan setiap perintah tercatat di log sudo host (`journalctl _COMM=sudo`).
 
 ```bash
 # user tanpa password (hanya key)
-sudo useradd -m -s /bin/bash -c "Cockpit-Py management" cockpit-mgr
-sudo usermod -p '*' cockpit-mgr
-printf 'Defaults:cockpit-mgr !requiretty\ncockpit-mgr ALL=(ALL) NOPASSWD: ALL\n' | sudo tee /etc/sudoers.d/cockpit-py
-sudo chmod 440 /etc/sudoers.d/cockpit-py && sudo visudo -cf /etc/sudoers.d/cockpit-py
+sudo useradd -m -s /bin/bash -c "tuKang management" tukang-mgr
+sudo usermod -p '*' tukang-mgr
+printf 'Defaults:tukang-mgr !requiretty\ntukang-mgr ALL=(ALL) NOPASSWD: ALL\n' | sudo tee /etc/sudoers.d/tukang
+sudo chmod 440 /etc/sudoers.d/tukang && sudo visudo -cf /etc/sudoers.d/tukang
 
 # key khusus: restrict = tanpa port/agent/X11 forwarding, pty untuk web terminal
-ssh-keygen -t ed25519 -N '' -C cockpit-py -f ~/cockpit-py-key
-sudo install -d -m 700 -o cockpit-mgr -g cockpit-mgr ~cockpit-mgr/.ssh
-echo "restrict,pty $(cat ~/cockpit-py-key.pub)" | sudo tee -a ~cockpit-mgr/.ssh/authorized_keys
-sudo chown cockpit-mgr: ~cockpit-mgr/.ssh/authorized_keys && sudo chmod 600 ~cockpit-mgr/.ssh/authorized_keys
-sudo restorecon -R ~cockpit-mgr/.ssh
-podman secret create cockpit-py-ssh-key ~/cockpit-py-key
-rm ~/cockpit-py-key           # private key sekarang hanya ada di podman secret
+ssh-keygen -t ed25519 -N '' -C tukang -f ~/tukang-key
+sudo install -d -m 700 -o tukang-mgr -g tukang-mgr ~tukang-mgr/.ssh
+echo "restrict,pty $(cat ~/tukang-key.pub)" | sudo tee -a ~tukang-mgr/.ssh/authorized_keys
+sudo chown tukang-mgr: ~tukang-mgr/.ssh/authorized_keys && sudo chmod 600 ~tukang-mgr/.ssh/authorized_keys
+sudo restorecon -R ~tukang-mgr/.ssh
+podman secret create tukang-ssh-key ~/tukang-key
+rm ~/tukang-key           # private key sekarang hanya ada di podman secret
 ```
 
 Setelah container jalan, `dep.sh` juga menambahkan `from="<subnet/IP asal container>"` pada baris
 key tersebut, sehingga key yang bocor tidak bisa dipakai dari mesin lain. Pastikan `sshd` aktif dan
-`AllowUsers`/`AllowGroups` (jika dipakai) mengizinkan `cockpit-mgr`.
+`AllowUsers`/`AllowGroups` (jika dipakai) mengizinkan `tukang-mgr`.
 
 ## 3. Password admin awal & kunci enkripsi
 
 ```bash
-printf '%s' 'GantiDenganPasswordKuat!' | podman secret create cockpit-py-admin-password -
+printf '%s' 'GantiDenganPasswordKuat!' | podman secret create tukang-admin-password -
 
 # Kunci enkripsi kredensial — SIMPAN SALINANNYA di password manager / vault
-python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' > ~/cockpit-py-data-key
-podman secret create cockpit-py-data-key ~/cockpit-py-data-key
-# setelah dipindah ke vault: shred -u ~/cockpit-py-data-key
+python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' > ~/tukang-data-key
+podman secret create tukang-data-key ~/tukang-data-key
+# setelah dipindah ke vault: shred -u ~/tukang-data-key
 ```
 
 Akun `admin` dibuat sekali saat database masih kosong. Saat login pertama Anda diminta memasang
@@ -81,11 +115,11 @@ akun bernama untuk setiap orang di *Access Control*, jangan berbagi akun `admin`
 
 ```bash
 mkdir -p ~/.config/containers/systemd
-cp deploy/cockpit-py.container ~/.config/containers/systemd/
+cp deploy/tukang.container ~/.config/containers/systemd/
 systemctl --user daemon-reload
-systemctl --user start cockpit-py
-systemctl --user status cockpit-py
-podman logs -f cockpit-py
+systemctl --user start tukang
+systemctl --user status tukang
+podman logs -f tukang
 ```
 
 Agar tetap jalan setelah logout/reboot (rootless): `sudo loginctl enable-linger $USER`.
@@ -97,14 +131,14 @@ Tambahkan ingress yang mengarah ke nama container di `global_net`:
 ```yaml
 # config.yml cloudflared
 ingress:
-  - hostname: cockpit.domainanda.com
-    service: http://cockpit-py:8000
+  - hostname: tukang.domainanda.com
+    service: http://tukang:8000
   # ...ingress lain...
   - service: http_status:404
 ```
 
 Jika tunnel dikelola dari dashboard Cloudflare (token): **Zero Trust → Networks → Tunnels → Public Hostname**,
-Service `HTTP` → `cockpit-py:8000`. WebSocket (metrics & terminal) didukung otomatis.
+Service `HTTP` → `tukang:8000`. WebSocket (metrics & terminal) didukung otomatis.
 
 Disarankan menambah **Cloudflare Access** di depan hostname ini sebagai lapisan login kedua, karena
 aplikasi ini memberi akses root shell ke server.
@@ -115,7 +149,7 @@ aplikasi ini memberi akses root shell ke server.
 |---|---|---|
 | `ADMIN_USERNAME` | `admin` | Username akun pertama |
 | `ADMIN_PASSWORD` | (secret) | Password akun pertama; jika kosong, dibuat acak dan dicetak di log |
-| `DATA_ENCRYPTION_KEY` | (secret `cockpit-py-data-key`) | Kunci Fernet untuk enkripsi password/private key server & secret MFA. **Wajib di-backup** |
+| `DATA_ENCRYPTION_KEY` | (secret `tukang-data-key`) | Kunci Fernet untuk enkripsi password/private key server & secret MFA. **Wajib di-backup** |
 | `MFA_REQUIRED` | `true` | Semua akun wajib mengaktifkan TOTP sebelum bisa memakai aplikasi |
 | `SESSION_HOURS` / `SESSION_IDLE_MINUTES` | `12` / `30` | Umur maksimum sesi / logout otomatis saat tidak aktif |
 | `PASSWORD_MIN_LENGTH` | `12` | Panjang minimum password akun |
@@ -126,14 +160,14 @@ aplikasi ini memberi akses root shell ke server.
 | `LOGIN_KNOWN_IP_DAYS` | `30` | IP yang pernah login sukses ke akun dalam N hari terakhir tidak terkena batas per akun (tetap terkena batas per IP), jadi serangan dari IP lain tidak bisa mengunci pemilik akun |
 | `AUDIT_RETENTION_DAYS` | `365` | Lama penyimpanan audit log |
 | `FILES_MAX_UPLOAD_MB` | `100` | Batas ukuran upload di menu Files (paket gratis Cloudflare membatasi body request 100 MB) |
-| `TRUSTED_ORIGINS` | kosong | Origin tambahan yang diizinkan (mis. `["https://cockpit.domain.com"]`) jika proxy mengubah header Host |
+| `TRUSTED_ORIGINS` | kosong | Origin tambahan yang diizinkan (mis. `["https://tukang.domain.com"]`) jika proxy mengubah header Host |
 | `LOCAL_MODE` | `ssh` | `ssh` = host dikelola via SSH; `direct` = in-process (install tanpa container) |
-| `LOCAL_SSH_HOST` / `LOCAL_SSH_PORT` / `LOCAL_SSH_USER` | `host.containers.internal` / `22` / `cockpit-mgr` | Target SSH node "local" |
+| `LOCAL_SSH_HOST` / `LOCAL_SSH_PORT` / `LOCAL_SSH_USER` | `host.containers.internal` / `22` / `tukang-mgr` | Target SSH node "local" |
 | `LOCAL_SSH_SUDO` | `true` | Naikkan hak dengan `sudo -n` (wajib bila user bukan root) |
 | `LOCAL_SSH_KEY_PATH` | `/run/secrets/host_ssh_key` | Private key (dari podman secret) |
 | `ENABLE_API_DOCS` | `false` | Tampilkan `/docs` |
 
-Data (SQLite) tersimpan di volume `cockpit-py-data`.
+Data (SQLite) tersimpan di volume `tukang-data`.
 
 ## Keamanan
 
@@ -148,12 +182,12 @@ Data (SQLite) tersimpan di volume `cockpit-py-data`.
   sebagai JSON ke log container (logger `audit`) → bisa diteruskan ke SIEM via journald.
 - **SSH host key**: dipin saat koneksi pertama (TOFU). Jika host key berubah, koneksi ditolak (indikasi MITM).
   Setelah server di-reinstall, reset lewat tombol *Reset* di form edit server.
-- **Backup**: simpan backup volume `cockpit-py-data` **dan** kunci `cockpit-py-data-key` di tempat terpisah.
+- **Backup**: simpan backup volume `tukang-data` **dan** kunci `tukang-data-key` di tempat terpisah.
   Tanpa kunci, kredensial server & MFA tidak bisa didekripsi (akun harus reset MFA, kredensial dimasukkan ulang).
-- **Akses ke host**: lewat user `cockpit-mgr` + sudo (tercatat di log sudo host), key dibatasi
+- **Akses ke host**: lewat user `tukang-mgr` + sudo (tercatat di log sudo host), key dibatasi
   `restrict,pty,from=...`. Login root via SSH tidak dipakai, jadi bisa dimatikan (`PermitRootLogin no`).
   Untuk server lain di inventaris, aktifkan *Elevate with sudo* di form server dengan pola yang sama.
-  Mencabut seluruh akses Cockpit-Py ke host cukup dengan menghapus `/etc/sudoers.d/cockpit-py`.
+  Mencabut seluruh akses tuKang ke host cukup dengan menghapus `/etc/sudoers.d/tukang`.
 - **Files**: pengelola file (setara Cockpit Files) berjalan sebagai root di node, jadi hanya untuk `admin`.
   Setiap baca/unduh/unggah/ubah file tercatat di audit log; direktori sistem utama (`/`, `/etc`, `/usr`, …)
   tidak bisa dihapus atau dipindah.
@@ -163,16 +197,16 @@ Data (SQLite) tersimpan di volume `cockpit-py-data`.
 ## Update
 
 ```bash
-podman build -t localhost/cockpit-py:latest -f Containerfile .
-systemctl --user restart cockpit-py
+podman build -t localhost/tukang:latest -f Containerfile .
+systemctl --user restart tukang
 ```
 
 ## Troubleshooting
 
 - **Node "local" offline / SSH gagal**: cek dari container
-  `podman exec cockpit-py python -c "import socket;s=socket.create_connection(('host.containers.internal',22),3);print(s.recv(30))"`.
+  `podman exec tukang python -c "import socket;s=socket.create_connection(('host.containers.internal',22),3);print(s.recv(30))"`.
   Jika `Connection refused`, sshd tidak listen / diblok firewall host. Jika `Permission denied`, cek
-  `~cockpit-mgr/.ssh/authorized_keys` (opsi `from=` cocok dengan IP asal di `journalctl -u sshd`).
+  `~tukang-mgr/.ssh/authorized_keys` (opsi `from=` cocok dengan IP asal di `journalctl -u sshd`).
 - **Lupa password admin**: hapus akun lalu restart; akun dibuat ulang dari secret
-  `podman exec cockpit-py python -c "import sqlite3;c=sqlite3.connect('/data/cockpit.db');c.execute('delete from app_users');c.commit()"`
-  lalu `systemctl --user restart cockpit-py`.
+  `podman exec tukang python -c "import sqlite3;c=sqlite3.connect('/data/tukang.db');c.execute('delete from app_users');c.commit()"`
+  lalu `systemctl --user restart tukang`.

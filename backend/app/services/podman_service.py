@@ -219,7 +219,7 @@ if os.path.dirname(os.path.abspath(target)) != os.path.abspath(base) or os.path.
     sys.exit('refusing to write outside the quadlet directory')
 # The directory may belong to another user (who could plant links): create the temp file exclusively
 # under a random name and only touch it through its descriptor
-fd, tmp = tempfile.mkstemp(dir=base, prefix='.' + name + '.', suffix='.cockpit-tmp')
+fd, tmp = tempfile.mkstemp(dir=base, prefix='.' + name + '.', suffix='.tukang-tmp')
 try:
     with os.fdopen(fd, 'w') as f:
         f.write(req['content'])

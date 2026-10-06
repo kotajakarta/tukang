@@ -66,9 +66,9 @@ async def test_viewer_can_read_but_not_act(make_user):
 @pytest.mark.asyncio
 async def test_operator_can_operate_but_not_administer(make_user):
     async with logged_in(await make_user("operator")) as c:
-        r = await c.post("/api/v1/services/local/cockpit-test-nonexistent.service/action", json={"action": "start"})
+        r = await c.post("/api/v1/services/local/tukang-test-nonexistent.service/action", json={"action": "start"})
         assert r.status_code == 200  # authorized (the unit itself doesn't exist)
-        assert (await c.get("/api/v1/services/local/cockpit-test-nonexistent.service/logs")).status_code == 200
+        assert (await c.get("/api/v1/services/local/tukang-test-nonexistent.service/logs")).status_code == 200
         assert (await c.post("/api/v1/users/local", json={"username": "x"})).status_code == 403
         assert (await c.post("/api/v1/containers/local/quadlets", json={"filename": "a.container", "content": ""})).status_code == 403
         assert (await c.delete("/api/v1/servers/local")).status_code == 403

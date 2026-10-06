@@ -1,11 +1,11 @@
-# Cockpit-Py: Agentless Multi-Server Linux Administration Platform - Design Spec
+# tuKang (formerly Cockpit-Py): Agentless Multi-Server Linux Administration Platform - Design Spec
 
 **Date:** 2026-10-01  
 **Status:** Approved  
 **Author:** AI System Architect & Full-Stack Engineer  
 
 ## 1. Overview & Goals
-The goal of Cockpit-Py is to provide a 100% feature-matched, agentless alternative to RHEL Cockpit, built on Python (FastAPI) for the backend and React (Vite + TypeScript + Ant Design + Tailwind CSS) for the frontend, with native, first-class Multi-Server Management built-in from day one.
+The goal of tuKang is to provide a 100% feature-matched, agentless alternative to RHEL Cockpit, built on Python (FastAPI) for the backend and React (Vite + TypeScript + Ant Design + Tailwind CSS) for the frontend, with native, first-class Multi-Server Management built-in from day one.
 
 ### Core Objectives:
 - **Centralized Controller & Agentless Architecture:** Master controller connects to managed nodes over SSH using public key authentication (via `asyncssh`). No custom agent needs to be installed on remote nodes.

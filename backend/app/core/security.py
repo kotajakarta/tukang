@@ -29,7 +29,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 # Constant-time dummy check for unknown usernames (avoids user enumeration via timing)
-_DUMMY_HASH = hash_password("cockpit-py-dummy-password")
+_DUMMY_HASH = hash_password("tukang-dummy-password")
 
 def check_password_or_dummy(password: str, user: Optional[AppUserModel]) -> bool:
     if user is None:

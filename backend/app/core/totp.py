@@ -40,6 +40,6 @@ def verify(secret: str, code: str, last_used_step: Optional[int] = None, window:
             return step
     return None
 
-def provisioning_uri(secret: str, account: str, issuer: str = "Cockpit-Py") -> str:
+def provisioning_uri(secret: str, account: str, issuer: str = "tuKang") -> str:
     label = quote(f"{issuer}:{account}")
     return f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}&digits={DIGITS}&period={STEP_SECONDS}"

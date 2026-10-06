@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Cockpit-Py Unified Runner
+# tuKang Unified Runner
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
@@ -12,7 +12,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}==========================================================${NC}"
-echo -e "${GREEN}    Cockpit-Py: Agentless Multi-Server Linux Controller   ${NC}"
+echo -e "${GREEN}    tuKang: Agentless Multi-Server Linux Controller   ${NC}"
 echo -e "${BLUE}==========================================================${NC}"
 
 # Check prerequisites
@@ -37,7 +37,7 @@ FRONTEND_PID=""
 
 cleanup() {
     echo ""
-    echo -e "${YELLOW}-> Stopping Cockpit-Py services...${NC}"
+    echo -e "${YELLOW}-> Stopping tuKang services...${NC}"
     if [ -n "$BACKEND_PID" ]; then
         kill "$BACKEND_PID" 2>/dev/null || true
     fi
@@ -45,7 +45,7 @@ cleanup() {
         kill "$FRONTEND_PID" 2>/dev/null || true
     fi
     kill $(jobs -p) 2>/dev/null || true
-    echo -e "${GREEN}[OK] Cockpit-Py shutdown cleanly.${NC}"
+    echo -e "${GREEN}[OK] tuKang shutdown cleanly.${NC}"
     exit 0
 }
 
@@ -74,7 +74,7 @@ FRONTEND_PID=$!
 
 echo ""
 echo -e "${GREEN}==========================================================${NC}"
-echo -e "${GREEN} Cockpit-Py is up and running!                            ${NC}"
+echo -e "${GREEN} tuKang is up and running!                            ${NC}"
 echo -e " - Web Dashboard:  ${BLUE}http://localhost:3000${NC}"
 echo -e " - Backend API:    ${BLUE}http://localhost:8000/api/health${NC}"
 echo -e " - API Docs:       ${BLUE}http://localhost:8000/docs${NC}"

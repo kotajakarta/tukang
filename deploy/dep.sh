@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cockpit-Py installer for RHEL (rootless Podman + Quadlet).
+# tuKang installer for RHEL (rootless Podman + Quadlet).
 # AIT HENDI
 # Run as the SAME non-root user that owns the rootless cloudflared container / global_net network,
 # from the repository root, in a real login session (ssh user@server, not `sudo su - user`):
@@ -16,7 +16,7 @@
 #   ./deploy/dep.sh --setup
 #
 # Options (env vars):
-#   LOCAL_SSH_USER=cockpit-mgr  host account the container SSHes into. Default: a dedicated user with
+#   LOCAL_SSH_USER=tukang-mgr  host account the container SSHes into. Default: a dedicated user with
 #                               passwordless sudo (every command lands in the host's sudo log).
 #                               Set to root to log in as root directly (not recommended).
 #   NETWORK=global_net      podman network shared with cloudflared
@@ -25,12 +25,12 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOCAL_SSH_USER="${LOCAL_SSH_USER:-cockpit-mgr}"
+LOCAL_SSH_USER="${LOCAL_SSH_USER:-tukang-mgr}"
 if [ "$LOCAL_SSH_USER" = "root" ]; then LOCAL_SSH_SUDO=false; else LOCAL_SSH_SUDO=true; fi
 NETWORK="${NETWORK:-global_net}"
 CLOUDFLARED_HOST="${CLOUDFLARED_HOST:-cloudflared}"
 QUADLET_DIR="$HOME/.config/containers/systemd"
-IMAGE="localhost/cockpit-py:latest"
+IMAGE="localhost/tukang:latest"
 
 green() { printf '\033[0;32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[1;33m%s\033[0m\n' "$*"; }
@@ -45,10 +45,10 @@ for arg in "$@"; do
   esac
 done
 # First install (or a half-finished one) needs the host setup too
-if [ ! -f "$QUADLET_DIR/cockpit-py.container" ] || ! getent passwd "$LOCAL_SSH_USER" >/dev/null; then
+if [ ! -f "$QUADLET_DIR/tukang.container" ] || ! getent passwd "$LOCAL_SSH_USER" >/dev/null; then
   SETUP=1
 fi
-for s in cockpit-py-admin-password cockpit-py-data-key cockpit-py-ssh-key; do
+for s in tukang-admin-password tukang-data-key tukang-ssh-key; do
   podman secret exists "$s" 2>/dev/null || SETUP=1
 done
 
@@ -76,6 +76,15 @@ if [ "$(loginctl show-user "$(whoami)" -p Linger --value 2>/dev/null)" != "yes" 
 fi
 green "linger OK"
 
+# ---------------------------------------------------------------- pre-rebrand install
+# Installs from before the rename (Cockpit-Py) are migrated once, keeping their data and secrets
+if [ -f "$QUADLET_DIR/cockpit-py.container" ] && [ ! -f "$QUADLET_DIR/tukang.container" ]; then
+  step "Migrating the Cockpit-Py install to tuKang"
+  "$REPO_DIR/deploy/migrate-from-cockpit-py.sh" \
+    || die "Migration failed; nothing old was deleted. Fix the error above and re-run."
+  SETUP=1   # rewrite sudoers + authorized_keys for the renamed management account
+fi
+
 # ---------------------------------------------------------------- source
 step "Updating source"
 if git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
@@ -100,37 +109,37 @@ green "built $IMAGE ${NEW_IMAGE_ID:0:12}"
 
 # ---------------------------------------------------------------- secrets
 step "Secrets"
-if podman secret exists cockpit-py-admin-password 2>/dev/null; then
-  green "cockpit-py-admin-password already exists (kept)"
+if podman secret exists tukang-admin-password 2>/dev/null; then
+  green "tukang-admin-password already exists (kept)"
 else
-  read -rsp "Initial password for Cockpit-Py user 'admin' (min 12 chars): " ADMIN_PW; echo
+  read -rsp "Initial password for tuKang user 'admin' (min 12 chars): " ADMIN_PW; echo
   [ "${#ADMIN_PW}" -ge 12 ] || die "Password too short (min 12)."
-  printf '%s' "$ADMIN_PW" | podman secret create cockpit-py-admin-password - >/dev/null
+  printf '%s' "$ADMIN_PW" | podman secret create tukang-admin-password - >/dev/null
   unset ADMIN_PW
-  green "cockpit-py-admin-password created"
+  green "tukang-admin-password created"
 fi
 
-if podman secret exists cockpit-py-data-key 2>/dev/null; then
-  green "cockpit-py-data-key already exists (kept)"
+if podman secret exists tukang-data-key 2>/dev/null; then
+  green "tukang-data-key already exists (kept)"
 else
   DATA_KEY="$(podman run --rm "$IMAGE" python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-  printf '%s' "$DATA_KEY" | podman secret create cockpit-py-data-key - >/dev/null
-  BACKUP="$HOME/cockpit-py-data-key.backup"
+  printf '%s' "$DATA_KEY" | podman secret create tukang-data-key - >/dev/null
+  BACKUP="$HOME/tukang-data-key.backup"
   ( umask 077; printf '%s\n' "$DATA_KEY" > "$BACKUP" )
   unset DATA_KEY
-  green "cockpit-py-data-key created"
+  green "tukang-data-key created"
   yellow "A copy is in $BACKUP — move it to your password manager / vault, then delete it."
   yellow "Without this key, stored server credentials and MFA secrets cannot be decrypted."
 fi
 
-if podman secret exists cockpit-py-ssh-key 2>/dev/null; then
-  green "cockpit-py-ssh-key already exists (kept)"
+if podman secret exists tukang-ssh-key 2>/dev/null; then
+  green "tukang-ssh-key already exists (kept)"
 else
-  TMPKEY="$(mktemp -d)/cockpit-py"
-  ssh-keygen -q -t ed25519 -N '' -C "cockpit-py@$(hostname)" -f "$TMPKEY"
-  podman secret create cockpit-py-ssh-key "$TMPKEY" >/dev/null
+  TMPKEY="$(mktemp -d)/tukang"
+  ssh-keygen -q -t ed25519 -N '' -C "tukang@$(hostname)" -f "$TMPKEY"
+  podman secret create tukang-ssh-key "$TMPKEY" >/dev/null
   rm -rf "$(dirname "$TMPKEY")"
-  green "cockpit-py-ssh-key created"
+  green "tukang-ssh-key created"
 fi
 
 # Writes exactly one authorized_keys line for our key (replacing any previous one) with given options
@@ -142,7 +151,7 @@ authorize_key() {
   tmp="$(mktemp)"
   sudo sh -c "cat '$auth' 2>/dev/null || true" | grep -vF "$KEY_BODY" > "$tmp" || true
   if [ -n "$opts" ]; then
-    printf '%s %s %s cockpit-py@%s\n' "$opts" "$KEY_TYPE" "$KEY_BODY" "$(hostname)" >> "$tmp"
+    printf '%s %s %s tukang@%s\n' "$opts" "$KEY_TYPE" "$KEY_BODY" "$(hostname)" >> "$tmp"
   fi
   sudo install -m 600 -o "$user" -g "$(id -gn "$user")" "$tmp" "$auth"
   rm -f "$tmp"
@@ -151,17 +160,17 @@ authorize_key() {
 
 if [ "$SETUP" = "1" ]; then
 # Public half of the key, read back from the secret (so re-runs are idempotent)
-PUBKEY="$(podman run --rm --secret cockpit-py-ssh-key,type=mount,target=/run/secrets/k,uid=1000,mode=0400 "$IMAGE" \
+PUBKEY="$(podman run --rm --secret tukang-ssh-key,type=mount,target=/run/secrets/k,uid=1000,mode=0400 "$IMAGE" \
   python -c "import asyncssh; print(asyncssh.read_private_key('/run/secrets/k').export_public_key().decode().strip())")"
 KEY_TYPE="$(echo "$PUBKEY" | awk '{print $1}')"
 KEY_BODY="$(echo "$PUBKEY" | awk '{print $2}')"
-[ -n "$KEY_BODY" ] || die "Could not read the public key from cockpit-py-ssh-key."
+[ -n "$KEY_BODY" ] || die "Could not read the public key from tukang-ssh-key."
 
 # ---------------------------------------------------------------- host management account
 step "Host management account ($LOCAL_SSH_USER)"
 if [ "$LOCAL_SSH_USER" != "root" ]; then
   if ! getent passwd "$LOCAL_SSH_USER" >/dev/null; then
-    sudo useradd -m -s /bin/bash -c "Cockpit-Py management (SSH from container only)" "$LOCAL_SSH_USER"
+    sudo useradd -m -s /bin/bash -c "tuKang management (SSH from container only)" "$LOCAL_SSH_USER"
     # '*' = no password can ever match (key-only). Not 'passwd -l': sshd without PAM treats a '!' lock
     # as a fully locked account and refuses public-key logins too.
     sudo usermod -p '*' "$LOCAL_SSH_USER"
@@ -169,16 +178,16 @@ if [ "$LOCAL_SSH_USER" != "root" ]; then
   fi
   SUDOERS_TMP="$(mktemp)"
   cat > "$SUDOERS_TMP" <<SUDOERS
-# Managed by the Cockpit-Py installer.
-# Cockpit-Py logs in as $LOCAL_SSH_USER and elevates with sudo; each command is recorded by sudo
-# (journalctl _COMM=sudo). Remove this file to revoke Cockpit-Py's administrative access.
+# Managed by the tuKang installer.
+# tuKang logs in as $LOCAL_SSH_USER and elevates with sudo; each command is recorded by sudo
+# (journalctl _COMM=sudo). Remove this file to revoke tuKang's administrative access.
 Defaults:$LOCAL_SSH_USER !requiretty
 $LOCAL_SSH_USER ALL=(ALL) NOPASSWD: ALL
 SUDOERS
   sudo visudo -cf "$SUDOERS_TMP" >/dev/null || die "Generated sudoers file is invalid."
-  sudo install -m 0440 -o root -g root "$SUDOERS_TMP" /etc/sudoers.d/cockpit-py
+  sudo install -m 0440 -o root -g root "$SUDOERS_TMP" /etc/sudoers.d/tukang
   rm -f "$SUDOERS_TMP"
-  green "sudoers entry /etc/sudoers.d/cockpit-py OK"
+  green "sudoers entry /etc/sudoers.d/tukang OK"
 fi
 
 # restrict = no port/agent/X11 forwarding; pty re-enabled for the web terminal
@@ -200,38 +209,38 @@ sed -e "s/^Network=.*/Network=$NETWORK/" \
     -e "s/^Environment=LOCAL_SSH_USER=.*/Environment=LOCAL_SSH_USER=$LOCAL_SSH_USER/" \
     -e "s/^Environment=LOCAL_SSH_SUDO=.*/Environment=LOCAL_SSH_SUDO=$LOCAL_SSH_SUDO/" \
     -e "s/^Environment=TRUSTED_PROXIES=.*/Environment=TRUSTED_PROXIES=$CLOUDFLARED_HOST/" \
-    "$REPO_DIR/deploy/cockpit-py.container" > "$QUADLET_DIR/cockpit-py.container"
+    "$REPO_DIR/deploy/tukang.container" > "$QUADLET_DIR/tukang.container"
 
 QUADLET_BIN="$(command -v /usr/libexec/podman/quadlet || true)"
 if [ -n "$QUADLET_BIN" ]; then
-  "$QUADLET_BIN" --user --dryrun >/dev/null 2>"/tmp/cockpit-py-quadlet.err" \
-    || { cat /tmp/cockpit-py-quadlet.err; die "Quadlet validation failed."; }
+  "$QUADLET_BIN" --user --dryrun >/dev/null 2>"/tmp/tukang-quadlet.err" \
+    || { cat /tmp/tukang-quadlet.err; die "Quadlet validation failed."; }
 fi
 
 systemctl --user daemon-reload
 # Quadlet runs the container with --replace, so a restart recreates it from the newly built image
-systemctl --user restart cockpit-py.service
-green "cockpit-py.service restarted"
+systemctl --user restart tukang.service
+green "tukang.service restarted"
 
 # ---------------------------------------------------------------- verify
 step "Verifying"
 for _ in $(seq 1 30); do
-  podman exec cockpit-py python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)" 2>/dev/null && break
+  podman exec tukang python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)" 2>/dev/null && break
   sleep 1
 done
-podman exec cockpit-py python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)" \
-  || { journalctl --user -u cockpit-py -n 30 --no-pager; die "App did not become healthy."; }
+podman exec tukang python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)" \
+  || { journalctl --user -u tukang -n 30 --no-pager; die "App did not become healthy."; }
 green "HTTP health OK"
 
-RUNNING_IMAGE_ID="$(podman inspect cockpit-py --format '{{.Image}}')"
+RUNNING_IMAGE_ID="$(podman inspect tukang --format '{{.Image}}')"
 [ "$RUNNING_IMAGE_ID" = "$NEW_IMAGE_ID" ] \
-  || die "cockpit-py is running image ${RUNNING_IMAGE_ID:0:12}, not the new build ${NEW_IMAGE_ID:0:12}."
+  || die "tukang is running image ${RUNNING_IMAGE_ID:0:12}, not the new build ${NEW_IMAGE_ID:0:12}."
 green "running the new image (revision $REVISION)"
 
-if podman exec cockpit-py python -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "$CLOUDFLARED_HOST" 2>/dev/null; then
+if podman exec tukang python -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "$CLOUDFLARED_HOST" 2>/dev/null; then
   green "trusted proxy '$CLOUDFLARED_HOST' resolves on $NETWORK"
 else
-  yellow "Cannot resolve '$CLOUDFLARED_HOST' from cockpit-py: visitor IPs (rate limiting, audit) will all show as the"
+  yellow "Cannot resolve '$CLOUDFLARED_HOST' from tukang: visitor IPs (rate limiting, audit) will all show as the"
   yellow "  tunnel's address. Re-run with CLOUDFLARED_HOST=<your cloudflared container name>."
 fi
 
@@ -242,7 +251,7 @@ fi
 
 # Runs a command on the host over the same SSH path the app uses; prints its stdout
 host_ssh() {
-  podman exec cockpit-py python -c "
+  podman exec tukang python -c "
 import asyncio, asyncssh, sys
 async def main():
     async with asyncssh.connect('host.containers.internal', username='$LOCAL_SSH_USER',
@@ -257,7 +266,7 @@ SSH_CONN="$(host_ssh 'echo $SSH_CONNECTION' 2>/dev/null)" || SSH_CONN=""
 if [ -n "$SSH_CONN" ]; then
   green "SSH from container to host OK"
   if [ "$LOCAL_SSH_SUDO" = "true" ]; then
-    host_ssh 'sudo -n true' >/dev/null && green "passwordless sudo OK" || yellow "sudo -n failed for $LOCAL_SSH_USER — check /etc/sudoers.d/cockpit-py"
+    host_ssh 'sudo -n true' >/dev/null && green "passwordless sudo OK" || yellow "sudo -n failed for $LOCAL_SSH_USER — check /etc/sudoers.d/tukang"
   fi
 fi
 
@@ -287,21 +296,21 @@ if [ -z "$SSH_CONN" ]; then
 fi
 
 if [ "$SETUP" != "1" ]; then
-  printf '\n%s\n' "$(green "Done. cockpit-py is running revision $REVISION.")"
+  printf '\n%s\n' "$(green "Done. tukang is running revision $REVISION.")"
   exit 0
 fi
 
 cat <<EOF
 
 $(green "Done.")
-Point your Cloudflare Tunnel public hostname to:   http://cockpit-py:8000
+Point your Cloudflare Tunnel public hostname to:   http://tukang:8000
 Then log in as 'admin': you will be asked to set up two-factor authentication (MFA_REQUIRED=true).
 Change the initial password from the account menu, and create named accounts in Access Control.
 
-Logs:     journalctl --user -u cockpit-py -f
-Restart:  systemctl --user restart cockpit-py
+Logs:     journalctl --user -u tukang -f
+Restart:  systemctl --user restart tukang
 Update:   ./deploy/dep.sh   (pulls, rebuilds and restarts on the latest code; no sudo)
 
-Hardening tip: Cockpit-Py no longer needs root SSH logins. Once everything works, consider
+Hardening tip: tuKang no longer needs root SSH logins. Once everything works, consider
 'PermitRootLogin no' in /etc/ssh/sshd_config (keep another admin path open while testing!).
 EOF

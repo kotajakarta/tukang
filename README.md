@@ -1,6 +1,6 @@
-# Cockpit-Py: Agentless Multi-Server Linux Administration Platform
+# tuKang: Agentless Multi-Server Linux Administration Platform
 
-A modern, high-performance web-based Linux system administration platform and 100% feature-matched alternative to RHEL Cockpit, built with **Python (FastAPI)** on the backend and **React (Vite + TypeScript + Ant Design + Tailwind CSS)** on the frontend.
+A modern, high-performance web-based Linux system administration platform, built as an independent alternative to web consoles such as [Cockpit](https://cockpit-project.org/), with **Python (FastAPI)** on the backend and **React (Vite + TypeScript + Ant Design + Tailwind CSS)** on the frontend.
 
 Designed with native, first-class **Multi-Server Management** from day one using an **Agentless Central Controller** architecture.
 
@@ -41,7 +41,7 @@ Designed with native, first-class **Multi-Server Management** from day one using
    - Bridges to local PTY (`pty.openpty`) for the master node and remote interactive SSH sessions (`asyncssh`) for managed nodes.
    - Supports window resize events (`fitAddon`).
 
-8. **Files (Cockpit Files equivalent):**
+8. **Files (web file manager):**
    - Browse, filter, list/grid view, bookmarks, hidden files, details panel, right-click menu & keyboard shortcuts.
    - Create, edit (text), rename, copy/cut/paste, symlink, delete, permissions & ownership, streaming upload/download.
    - Built-in media viewer/player (images, video, audio, PDF) in a modal, with prev/next across the folder and seekable streaming (HTTP Range).
@@ -107,7 +107,8 @@ account menu in the top-right corner. See the security section of [docs/DEPLOY.m
 
 ### Production (Podman Quadlet + Cloudflare Tunnel)
 
-See [docs/DEPLOY.md](docs/DEPLOY.md) for the container image, `deploy/cockpit-py.container`, and tunnel setup.
+See [docs/DEPLOY.md](docs/DEPLOY.md) for the container image, `deploy/tukang.container`, and tunnel setup.
+Upgrading a server that still runs the old **Cockpit-Py** container: see "Migrasi dari Cockpit-Py" in the same document.
 
 ---
 
@@ -133,14 +134,27 @@ The suite covers, among others:
 
 Copyright © 2026 AIT HENDI
 
-Cockpit-Py is free software, licensed under the **GNU Affero General Public License v3.0 only**
+tuKang is free software, licensed under the **GNU Affero General Public License v3.0 only**
 ([LICENSE](LICENSE)). You may use it for any purpose, including commercially, modify it, and
 redistribute it. If you modify it and let others use it over a network (e.g. host it for customers),
 you must offer them the complete source code of your modified version under the same license.
 
-**Commercial license:** if you want to build on Cockpit-Py without the AGPL's obligations (for example
+**Commercial license:** if you want to build on tuKang without the AGPL's obligations (for example
 in a closed-source product or service), a separate commercial license is available from the copyright
 holder. Open an issue on this repository to get in touch.
 
-Contributions are welcome; by submitting one you agree that it may be distributed under both the
-AGPL-3.0 and the commercial license.
+**Third-party software:** tuKang uses open-source components under their own licenses; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). These notices must be kept in every distribution,
+including commercially licensed ones.
+
+**Contributions** are welcome. Because tuKang is dual-licensed, contributions can only be accepted
+after signing the [Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## ™ Trademarks
+
+"tuKang" and the AiT logo are trademarks of AIT HENDI. The AGPL license covers the code, not the
+name or logo: forks and modified versions must use a different name.
+
+tuKang is an independent project and is not affiliated with, endorsed by, or sponsored by Red Hat,
+Inc. or the Cockpit project. Cockpit, Red Hat, and RHEL are trademarks of their respective owners and
+are mentioned only to describe compatibility and comparison.

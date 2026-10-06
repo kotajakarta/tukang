@@ -10,7 +10,7 @@ from app.models.user import (
 )
 from app.services import audit_service
 
-# Cockpit-Py login accounts (not Linux users). Admin-only via app.core.policy.
+# tuKang login accounts (not Linux users). Admin-only via app.core.policy.
 router = APIRouter(prefix="/app-users", tags=["Access Control"])
 
 async def _get(db: AsyncSession, user_id: int) -> AppUserModel:

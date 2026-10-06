@@ -24,10 +24,12 @@ COPY backend/requirements.lock backend/requirements.lock
 RUN pip install --no-cache-dir -r backend/requirements.lock
 COPY backend/app backend/app
 COPY --from=frontend /src/frontend/dist frontend/dist
+# The image is a distribution: it must carry tuKang's license and the third-party notices
+COPY LICENSE THIRD_PARTY_NOTICES.md ./
 
-RUN useradd --system --uid 1000 --create-home cockpit \
-    && mkdir -p /data && chown cockpit:cockpit /data
-USER cockpit
+RUN useradd --system --uid 1000 --create-home tukang \
+    && mkdir -p /data && chown tukang:tukang /data
+USER tukang
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

@@ -53,7 +53,7 @@ export const MfaSetup: React.FC<{ onDone: () => void }> = ({ onDone }) => {
             onClick={() => {
               const a = document.createElement('a');
               a.href = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
-              a.download = 'cockpit-py-recovery-codes.txt';
+              a.download = 'tukang-recovery-codes.txt';
               a.click();
               URL.revokeObjectURL(a.href);
             }}

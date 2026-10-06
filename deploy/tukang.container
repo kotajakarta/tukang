@@ -1,38 +1,38 @@
-# Cockpit-Py — Podman Quadlet
+# tuKang — Podman Quadlet
 #
-# Rootless install:  ~/.config/containers/systemd/cockpit-py.container
-# Rootful install:   /etc/containers/systemd/cockpit-py.container
-# Then: systemctl [--user] daemon-reload && systemctl [--user] start cockpit-py
+# Rootless install:  ~/.config/containers/systemd/tukang.container
+# Rootful install:   /etc/containers/systemd/tukang.container
+# Then: systemctl [--user] daemon-reload && systemctl [--user] start tukang
 #
 # Required podman secrets (create once, see docs/DEPLOY.md):
-#   cockpit-py-admin-password  -> initial password for the "admin" login
-#   cockpit-py-ssh-key         -> private key the container uses to SSH into this host
-#   cockpit-py-data-key        -> Fernet key encrypting stored credentials (BACK IT UP)
+#   tukang-admin-password  -> initial password for the "admin" login
+#   tukang-ssh-key         -> private key the container uses to SSH into this host
+#   tukang-data-key        -> Fernet key encrypting stored credentials (BACK IT UP)
 
 [Unit]
-Description=Cockpit-Py web console
+Description=tuKang web console
 Wants=network-online.target
 After=network-online.target
 
 [Container]
-ContainerName=cockpit-py
-Image=localhost/cockpit-py:latest
+ContainerName=tukang
+Image=localhost/tukang:latest
 
-# Same network as cloudflared, so the tunnel can reach http://cockpit-py:8000.
+# Same network as cloudflared, so the tunnel can reach http://tukang:8000.
 # No PublishPort: the app is only reachable through the tunnel.
 Network=global_net
 
-Volume=cockpit-py-data:/data:Z
+Volume=tukang-data:/data:Z
 
-Secret=cockpit-py-admin-password,type=env,target=ADMIN_PASSWORD
-Secret=cockpit-py-data-key,type=env,target=DATA_ENCRYPTION_KEY
-Secret=cockpit-py-ssh-key,type=mount,target=/run/secrets/host_ssh_key,uid=1000,mode=0400
+Secret=tukang-admin-password,type=env,target=ADMIN_PASSWORD
+Secret=tukang-data-key,type=env,target=DATA_ENCRYPTION_KEY
+Secret=tukang-ssh-key,type=mount,target=/run/secrets/host_ssh_key,uid=1000,mode=0400
 
 # The "local" node is the host itself, managed over SSH
 Environment=LOCAL_MODE=ssh
 Environment=LOCAL_SSH_HOST=host.containers.internal
 Environment=LOCAL_SSH_PORT=22
-Environment=LOCAL_SSH_USER=cockpit-mgr
+Environment=LOCAL_SSH_USER=tukang-mgr
 # Log in as the dedicated user and elevate per command with `sudo -n` (recorded in the host's sudo log)
 Environment=LOCAL_SSH_SUDO=true
 Environment=LOCAL_SSH_KEY_PATH=/run/secrets/host_ssh_key
